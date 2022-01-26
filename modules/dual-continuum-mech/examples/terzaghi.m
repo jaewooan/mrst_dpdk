@@ -1,3 +1,33 @@
+% % Copyright Notice
+% 
+% <html>
+% <p><font size="-1">
+% Copyright 2009-2021 SINTEF Digital, Mathematics & Cybernetics.
+% </font></p>
+% <p><font size="-1">
+% This file is part of The MATLAB Reservoir Simulation Toolbox (MRST).
+% </font></p>
+% <p><font size="-1">
+% MRST is free software: you can redistribute it and/or modify
+% it under the terms of the GNU General Public License as published by
+% the Free Software Foundation, either version 3 of the License, or
+% (at your option) any later version.
+% </font></p>
+% <p><font size="-1">
+% MRST is distributed in the hope that it will be useful,
+% but WITHOUT ANY WARRANTY; without even the implied warranty of
+% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+% GNU General Public License for more details.
+% </font></p>
+% <p><font size="-1">
+% You should have received a copy of the GNU General Public License
+% along with MRST.  If not, see
+% <a href="http://www.gnu.org/licenses/">http://www.gnu.org/licenses</a>.
+% </font></p>
+% </html>
+
+
+
 %% Example of a poromechanical dual-continuum simulation on a 2D grid with
 %  stiff fractures
 %
@@ -16,14 +46,14 @@ close all
 mrstModule add dual-continuum-mech ad-core ad-mechanics dual-porosity ad-props vemmech
 
 %% Input setting
-nx = 10; ny = 10; 
-Lx = 100; Ly = 100; %m
-km = 1; kf = 1; %md
-porom = 0.375; porof = 0.375;
-vol_f = 0.0001; % frac vol fraction
-mu = 0.0981; % centipoise = 1e-3 pa
-rho = 1000; %kg/m3
-cf = 4.4e-10; %fluid compressibility 1/pa
+nx = 1; ny = 10; 
+Lx = 1; Ly = 10; %m
+km = 100; kf = 100; %md
+porom = 0.5; porof = 0.5;
+vol_f = 0.5; % frac vol fraction
+mu = 1/centi/poise;%0.0981; % centipoise = 1e-3 pa
+rho = 1;%1000; %kg/m3
+cf = 1e-10;%4.4e-10; %fluid compressibility 1/pa
 pref = 0; %pa
 nu = 0.25; % Poisson's ratio
 E_m = 1e9; % Young's modulus of matrix continuum
@@ -53,6 +83,16 @@ force = 1e7; %pa boundary force
 pres_m = 1/3*B_m*(1+nu_mu)*force;
 pres_f = 1/3*B_f*(1+nu_fu)*force;
 
+alpha = 1;
+h = Ly/ny;         %discretized, m
+K1D = K_m+4/3*G_shear;    %uniaxial drained bulk modulus
+c_ = kf/nu_m*M_m * K1D/(K1D+alpha^2*M_m); %consolidation coefficient
+tc = Ly^2/c_;       %characteristic time
+Nt = 100;         %number of timesteps
+N = 500;          %number of elements in series
+m = [0:1:N];      %fourier series sequence
+p0 = alpha*M_m*force/(K1D+alpha^2*M_m);  % undrained pressure, Pa
+u0 = Ly*force/(K1D+alpha^2*M_m);        %max initial dispacement, m
 
 %% Setup default options
 opt = struct('cartDims'            , [nx, ny], ...
@@ -71,7 +111,7 @@ G = computeGeometry(G);
 % fracture
 perm_fracture = kf*milli*darcy*ones(G.cartDims); 
 rock_fracture = struct('perm', reshape(perm_fracture, [], 1), ...
-              'poro', ones(G.cells.num, 1)*porom,... 
+              'poro', ones(G.cells.num, 1)*porof,... 
               'vol_fraction', ones(G.cells.num, 1)*vol_f); 
                % note, poro = intrinsic_poro*vol_fraction, therefore, for
                % this case intrinsic_poro is 0.6
@@ -118,7 +158,7 @@ bc = cell(4,1);
 % end
 
 for i = 1:numel(oside)
-    if i == 2
+    if i == 3
         bc{i} = pside([], G, oside{i}, 0);
     else
         bc{i} = fluxside([], G, oside{i}, 0, 'sat', 1);
@@ -144,11 +184,11 @@ bcdisp_zero = @(x) x*0.0; % Boundary displacement function set to zero.
 bc_el_sides{1} = bc{1}; 
 bc_el_sides{1}.el_bc.disp_bc.mask(:, 2) = false;   % west x fixed, y free
 bc_el_sides{2} = bc{2}; 
-bc_el_sides{2}.el_bc.disp_bc.mask(:, :) = false;   % east x free, y free
+bc_el_sides{2}.el_bc.disp_bc.mask(:, 2) = false;   % east x free, y free
 bc_el_sides{3} = bc{3}; 
-bc_el_sides{3}.el_bc.disp_bc.mask(:, 1) = false;    % south x free, y fixed
+bc_el_sides{3}.el_bc.disp_bc.mask(:, :) = true;    % north x fixed, y fixed
 bc_el_sides{4} = bc{4}; 
-bc_el_sides{4}.el_bc.disp_bc.mask(:, :) = false;   % north x free, y fixed
+bc_el_sides{4}.el_bc.disp_bc.mask(:, 2) = false;   % south x free, y fixed
 
 % collect the displacement boundary conditions
 nodes = [];
@@ -191,7 +231,7 @@ mech = struct('E', E, 'nu', nu, 'E_m', E_m, 'nu_m', nu_m, 'E_f', E_f, 'nu_f', nu
 fullycoupledOptions = {'verbose', opt.verbose};
 DC_model = DualContMechWaterModel(G, {rock_fracture, rock_matrix}, {fluid_fracture, fluid_matrix}, mech, fullycoupledOptions{:});
 DC_model.nonlinearTolerance = 1e-8;
-d1 = 0.1; % spacing of fracture set 1
+d1 = sqrt(2)*pi;%0.1; % spacing of fracture set 1
 d2 = d1; % spacing of fracture set 2
 fracture_spacing = repmat([d1,d2],G.cells.num,1);
 shape_factor_name = 'Lim_AzizShapeFactor';
@@ -199,30 +239,28 @@ DC_model.transfer_model_object = SimpleTransferFunction(shape_factor_name, fract
 DC_model = DC_model.validateModel();
 
 %% Setup initial state and fluid BCs
-pressure = ones(G.cells.num,1)*44.17e5; % pa
+pressure = ones(G.cells.num,1)*p0; % pa
 u_init = zeros(2*(nx+1)*(ny+1), 1);
-u_init(1:2:end) = force*nu_fu/2/G_shear*G.nodes.coords(:,1);
-u_init(2:2:end) = -force*(1-nu_fu)/2/G_shear*G.nodes.coords(:,2);
+u_init(1:2:end) = 0;
+u_init(2:2:end) = u0*(Ly-G.nodes.coords(:,2));
 
-% state0 = struct('pressure', pressure, 'pressure_matrix', pressure, 's', ones(G.cells.num, 1), 'swm', ones(G.cells.num, 1));
-state0 = struct('pressure', ones(G.cells.num,1)*pres_f, 'pressure_matrix', ones(G.cells.num,1)*pres_m, 's', ones(G.cells.num, 1), 'swm', ones(G.cells.num, 1),...
-                'u', u_init);
+state0 = struct('pressure', pressure, 'pressure_matrix', pressure, 's', ones(G.cells.num, 1), 'swm', ones(G.cells.num, 1));
+% state0 = struct('pressure', ones(G.cells.num,1)*p0, 'pressure_matrix', ones(G.cells.num,1)*p0, 's', ones(G.cells.num, 1), 'swm', ones(G.cells.num, 1),...
+%                 'u', u_init);
 
 % need to initiate the fluid bc's, bc's are the same for micro and macro scales 
 %bc_f0 = pside([], G, 'WEST', 10000000, 'sat', 1);
 bc_f0 = fluxside([], G, 'WEST', 0, 'sat', 1);
-%bc_f0 = fluxside(bc_f0, G, 'EAST', 0,'sat', 1);
-bc_f0 = pside(bc_f0 , G, 'EAST', 0, 'sat', 1);
-bc_f0 = fluxside(bc_f0, G, 'SOUTH', 0, 'sat', 1);
-bc_f0 = fluxside(bc_f0, G, 'NORTH', 0, 'sat', 1);
+bc_f0 = fluxside(bc_f0, G, 'EAST', 0,'sat', 1);
+bc_f0 = fluxside(bc_f0 , G, 'SOUTH', 0, 'sat', 1);
+bc_f0 = pside(bc_f0, G, 'NORTH', 0, 'sat', 1);
+%bc_f0 = fluxside(bc_f0, G, 'NORTH', 0, 'sat', 1);
 %bc_f0 = pside(bc_f0 , G, 'SOUTH', 0, 'sat', 1);
 %bc_f0 = pside(bc_f0 , G, 'NORTH', 0, 'sat', 1);
 
 
 %% Simulate 
-time = [0,linspace(0.1148543e-02,9*0.1148543e-02, 9),linspace(0.1148543e-01,9*0.1148543e-01, 9),...
-       linspace(0.1148543,9*0.1148543, 9), linspace(0.1148543e1,9*0.1148543e1, 9),...
-       linspace(0.1148543e2,10*0.1148543e2, 10)]*3600*24;
+time = [1:1:Nt]*tc/Nt*100;
 % dt = 1;
 % time = [0, linspace(dt, 10, 10*dt)];
 dt = diff(time);
@@ -241,117 +279,116 @@ legend('matrix', 'fracture')
 title('Results for the intrinsic fracture stiffness simulation')
 
 %% test
-close all
-figure
-for i=1:nx
-    X_(i, :) =  G.cells.centroids(nx*(i-1)+1:nx*i,1)';
-    Y_(i, :) =  G.cells.centroids(nx*(i-1)+1:nx*i,2)';
-    R_(i,:) = p_f(nx*(i-1)+1:nx*i,size(time,2));
-end
-pcolor(X_, Y_, R_);
-shading interp
-set(gca,'YDir','normal') 
-colorbar
+% close all
+% close all
+% figure
+% for i=1:ny
+%     X_(i, :) =  G.cells.centroids(nx*(i-1)+1:nx*i,1)';
+%     Y_(i, :) =  G.cells.centroids(nx*(i-1)+1:nx*i,2)';
+%     R_(i,:) = p_f(nx*(i-1)+1:nx*i,size(time,2));
+% end
+% pcolor(X_, Y_, R_);
+% shading interp
+% set(gca,'YDir','normal') 
+% colorbar
+% 
+% figure
+% for i=1:ny
+%     X_(i, :) =  G.cells.centroids(nx*(i-1)+1:nx*i,1)';
+%     Y_(i, :) =  G.cells.centroids(nx*(i-1)+1:nx*i,2)';
+%     R_(i,:) = p_m(nx*(i-1)+1:nx*i,size(time,2));
+% end
+% pcolor(X_, Y_, R_);
+% shading interp
+% set(gca,'YDir','normal') 
+% colorbar
+% 
+% 
+% figure
+% for i=1:ny
+%     X_(i, :) =  G.cells.centroids(nx*(i-1)+1:nx*i,1)';
+%     Y_(i, :) =  G.cells.centroids(nx*(i-1)+1:nx*i,2)';
+%     R_(i, :) = states{1}.stress(nx*(i-1)+1:nx*i, 2);
+% end
+% pcolor(X_, Y_, R_);
+% shading interp
+% set(gca,'YDir','normal') 
+% colorbar
+% %%
+% figure
+% for i=1:ny+1
+%     X__(i, :) =  G.nodes.coords((nx+1)*(i-1)+1:(nx+1)*i,1)';
+%     Y__(i, :) =  G.nodes.coords((nx+1)*(i-1)+1:(nx+1)*i,2)';
+%     R__(i,:) = u((nx+1)*2*(i-1)+1:2:(nx+1)*2*i,size(time,2));
+% end
+% pcolor(X__, Y__, R__);
+% set(gca,'YDir','normal') 
+% colorbar
+% 
+% 
+% figure
+% for i=1:ny+1
+%     X__(i, :) =  G.nodes.coords((nx+1)*(i-1)+1:(nx+1)*i,1)';
+%     Y__(i, :) =  G.nodes.coords((nx+1)*(i-1)+1:(nx+1)*i,2)';
+%     R__(i, :) = u((nx+1)*2*(i-1)+2:2:(nx+1)*2*i+1,5);
+% end
+% pcolor(X__, Y__, R__);
+% set(gca,'YDir','normal') 
+% colorbar
 
-figure
-for i=1:nx
-    X_(i, :) =  G.cells.centroids(nx*(i-1)+1:nx*i,1)';
-    Y_(i, :) =  G.cells.centroids(nx*(i-1)+1:nx*i,2)';
-    R_(i,:) = p_m(nx*(i-1)+1:nx*i,size(time,2));
-end
-pcolor(X_, Y_, R_);
-shading interp
-set(gca,'YDir','normal') 
-colorbar
 
-
-figure
-for i=1:nx
-    X_(i, :) =  G.cells.centroids(nx*(i-1)+1:nx*i,1)';
-    Y_(i, :) =  G.cells.centroids(nx*(i-1)+1:nx*i,2)';
-    R_(i, :) = states{1}.stress(nx*(i-1)+1:nx*i, 2);
-end
-pcolor(X_, Y_, R_);
-shading interp
-set(gca,'YDir','normal') 
-colorbar
 
 %%
-figure
-for i=1:nx+1
-    X__(i, :) =  G.nodes.coords((nx+1)*(i-1)+1:(nx+1)*i,1)';
-    Y__(i, :) =  G.nodes.coords((nx+1)*(i-1)+1:(nx+1)*i,2)';
-    R__(i,:) = u((nx+1)*2*(i-1)+1:2:(nx+1)*2*i,size(time,2));
-end
-pcolor(X__, Y__, R__);
-set(gca,'YDir','normal') 
-colorbar
+% Terzaghi: simple analytical solution (1D problem)
+% author: Ruslan Rin (iskhakov@stanford.edu)
+% 5/13/2016
+clc
+z = [h/2:h:Ly];    % center of our blocks
+z2 = [0:h:Ly];
+Nb = 5;
+if (Nb < 20)
+  %we need to shift since numerical schemes uses 9 blocks to mimic
+  %boundaries capabilities
+  z(Nb) = z(Nb-1);    
+  z2(1) = -h/8; 
+end;
+
+%analytical solution
+for i = 1:Nt  
+  tmp_exp = exp(-pi^2*c_*time(i)*(2*m+1).^2/(4*Ly^2));
+  for iz = 1:Nb
+    xtmp = sum(1./(2*m+1).*tmp_exp.*sin((2*m+1)*pi.*z(iz)/2/Ly));
+    p(iz,i) = 4/pi*p0*xtmp; %Pa
+    xtmp = sum(1./(2*m+1).^2.*tmp_exp.*cos((2*m+1)*pi.*z2(iz)/2/Ly));
+    u_a(iz,i) = alpha*p0/K1D*(Ly-z2(iz)-8*Ly/pi^2*xtmp) + u0;
+  end;
+end;
+tt = time/tc;
+
+% pressure and dispacement 
+pmax = 85;
+umax = 0.8;
+
+figure; set(gcf,'color','white'); set(gcf, 'Position', [400 200 600 500])
+plot(tt, u_a(1,:));
+hold on
+plot(tt, u(1,:));
+ylabel('dispacement, m');
+xlabel('time, t/t_c');
+legend('u_{top,analytical}','u_{top,numerical}',...
+          'Location', 'SouthWest');
+
+figure;
+plot(tt,p(Nb,:));
+hold on
+plot(tt,p_m(Nb,:));
+ylabel('pressure, pa');
+xlabel('time, t/t_c');
+legend('p_{bot,analytical}', 'p_{bot,numerical}',...
+          'Location', 'SouthWest');
+%Image = getframe(gcf); imwrite(Image.cdata, 'terzagi10_comparison.png');
 
 
-figure
-for i=1:nx+1
-    X__(i, :) =  G.nodes.coords((nx+1)*(i-1)+1:(nx+1)*i,1)';
-    Y__(i, :) =  G.nodes.coords((nx+1)*(i-1)+1:(nx+1)*i,2)';
-    R__(i, :) = u((nx+1)*2*(i-1)+2:2:(nx+1)*2*i+1,5);
-end
-pcolor(X__, Y__, R__);
-set(gca,'YDir','normal') 
-colorbar
-
-
-
-%% Mandel - analytical solution 
-biot_coefficient = 1;
-biot_modulus = 1/(porom*cf); % M
-
-sol = MandelAnalyticalSolution(Lx, Ly, E(1), nu(1), biot_coefficient(1), biot_modulus(1), km*milli*darcy, mu*centi*poise, force);
-dx = Lx/nx;
-dy = Ly/ny;
-pcoord = [dx/2; dy/2];
-ucoord = [0; Ly];
-
-% compute analytical solution for pressure at x=dx, z = dx (center of first cell),
-%                          for displacement at x =0, z = 100
-
-for i = 1:length(time)
-  t = time(i);
-  sol = compute_pressure_solution(sol, t, pcoord);
-  sol = compute_displacement_solution(sol, t, ucoord);
-  p(i) = sol.pressure;
-  u_anal(i) = abs(sol.displacement(2));
-end
-maxt = max(time);
-
-% pressure at first cell (bottom left) 
-figure; set(gcf,'color','white'); set(gcf, 'Position', [400 200 800 600])
-% semilogx(time, p/p(1), 'r', ...
-%                  time, p_m(1, :)/p_m(1, 1), 'o', ...
-%                  time, p_f(1, :)/p_f(1, 1), 'k*');
-semilogx(time, p, 'r', ...
-                 time, p_m(1, :), 'o', ...
-                 time, p_f(1, :), 'k*');
-xlabel('Time, Days'); ylabel('Normalized Pressure');
-leg = legend('analytical', 'Matrix', 'Fracture', 'Location', 'SouthWest');
-pos = get(leg, 'Position');
-pos = [pos(1), pos(2)*1.5, pos(3), pos(4)];
-set(leg, 'Position', pos);
-% ylim([0, 1.2]);     xlim([0, maxt]);
-set(gca,'XTick',[1e-2 1e-1 1 1e1]);
-%Image = getframe(gcf); %imwrite(Image.cdata, 'mandel_pressure.png');
-
-% displacement at x =0, z = 102
-figure; set(gcf,'color','white'); set(gcf, 'Position', [400 200 800 600])
-% semilogx(time, u_anal/u_anal(1), 'r', time, u(421*2,:)/u(421*2,1), 'o');
-semilogx(time, -u_anal, 'r', time, u(end,:), 'o');
-xlabel('Time, Days'); ylabel('Normalized Settlement');
-leg = legend('analytical', 'y Displacment', 'Location', 'SouthWest');
-pos = get(leg, 'Position');
-pos = [pos(1), pos(2)*1.5, pos(3), pos(4)];
-set(leg, 'Position', pos);
-% xlim([0, maxt]); ylim([0.99, 1.5]);
-set(gca,'XTick',[1e-2 1e-1 1 1e1]);
-%Image = getframe(gcf); imwrite(Image.cdata, 'mandel_displacement.png');
- 
 
 
         

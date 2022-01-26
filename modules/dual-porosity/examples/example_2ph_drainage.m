@@ -67,22 +67,20 @@ while t<=tmax
     
     figure(fig1)
     subplot(2,1,1);
-    p = plotCellData(G,state.s(:,1));
+    p = plotCellData(G,state.pressure);
     p.EdgeAlpha = 0;
     view(0,0);
     colorbar;
-    caxis([0,1]);
     set(gca,'FontSize',16);
     xlabel('x')
     zlabel('z')
     title('Fractures');
     
     subplot(2,1,2);
-    p = plotCellData(G,state.sm(:,1));
+    p = plotCellData(G,state.pressure_matrix);
     p.EdgeAlpha = 0;
     view(0,0);
     colorbar;
-    caxis([0,1]);
     set(gca,'FontSize',16);
     xlabel('x')
     zlabel('z')

@@ -27,23 +27,26 @@ function [E, K, G, nu] = HS_bound(E_m, E_f, nu_m, nu_f, vol_m, vol_f, type)
 %
 
 % Shear moduli
-G_f = E_f/(2*(1+nu_f));
-G_m = E_m/(2*(1+nu_m));
+G_f = E_f./(2*(1+nu_f));
+G_m = E_m./(2*(1+nu_m));
 
 % Bulk moduli, with plane-stress
-K_f = E_f/(3*(1-2*nu_f)); 
-K_m = E_m/(3*(1-2*nu_m)); 
+K_f = E_f./(3*(1-2*nu_f)); 
+K_m = E_m./(3*(1-2*nu_m)); 
 
 % Calculate 
-if strcmp(type, 'lower')
-    K = K_f + vol_m/((K_m-K_f)^-1 + vol_f*(K_f + (4/3)*G_f)^-1);
-    G = G_f + vol_m/((G_m-G_f)^-1 + (2*vol_f*(K_f + 2*G_f))*(5*G_f*(K_f + (4/3)*G_f))^-1);
-elseif strcmp(type, 'upper')
-    K = K_m + vol_f/((K_f-K_m)^-1 + vol_m*(K_m + (4/3)*G_m)^-1);
-    G = G_m + vol_f/((G_f-G_m)^-1 + (2*vol_m*(K_m + 2*G_m))*(5*G_m*(K_m + (4/3)*G_m))^-1);
-end
+% if strcmp(type, 'lower')
+%     K = K_f + vol_m./((K_m-K_f).^-1 + vol_f.*(K_f + (4/3)*G_f).^-1);
+%     G = G_f + vol_m./((G_m-G_f).^-1 + (2*vol_f.*(K_f + 2*G_f)).*(5*G_f.*(K_f + (4/3).*G_f)).^-1);
+% elseif strcmp(type, 'upper')
+%     K = K_m + vol_f./((K_f-K_m).^-1 + vol_m.*(K_m + (4/3)*G_m).^-1);
+%     G = G_m + vol_f./((G_f-G_m).^-1 + (2*vol_m.*(K_m + 2*G_m)).*(5*G_m.*(K_m + (4/3)*G_m)).^-1);
+% end
 
-K_2d = 9*K*G/(3*K+4*G);
-nu = (K_2d - G)/(K_2d + G);
-E = K_2d*2*(1-nu);
+K = 1 ./ (vol_m ./ K_m + vol_f ./ K_f);
+G = K.* (vol_m ./ K_m .* G_m + vol_f ./ K_f .* G_f);
+
+K_2d = 9*K.*G./(3*K+4*G);
+nu = (K_2d - G)./(K_2d + G);
+E = K_2d*2.*(1-nu);
 end

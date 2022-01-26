@@ -25,7 +25,7 @@ G          = computeGeometry(G);
 rock       = makeRock(G, 0.1*darcy, 1);
 fluid      = initSingleFluid('mu' ,    1*centi*poise, ...
                              'rho', 1014*kilogram/meter^3);
-bc  = pside([], G, 'TOP', 100.*barsa());
+bc  = pside([], G, 'TOP', 300.*barsa());
 
 %% Assemble and solve the linear system
 % To solve the flow problem, we use the standard two-point

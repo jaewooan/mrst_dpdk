@@ -51,28 +51,54 @@ else
 end
 identity = rank2(ones(model.G.cells.num, 1));
 
-K_dr = (1/(d^2))*doubledot(identity, doubledot(identity, C, model.G), model.G); 
+
 [v_m, v_f] = deal(model.rock_matrix.vol_fraction, model.rock.vol_fraction);
 [K_m, b_m, invn_m, K_f, b_f, invn_f] = deal(coefficients.iP.C_m, coefficients.iP.b_m, ... 
                                             coefficients.iP.invn_m, coefficients.iP.C_f, ...
                                             coefficients.iP.b_f, coefficients.iP.invn_f);
+K_dr = 1./(v_m./K_m + v_f./K_f);%(1/(d^2))*doubledot(identity, doubledot(identity, C, model.G), model.G); 
+% K_dr = (1/(d^2))*doubledot(identity, doubledot(identity, C, model.G), model.G);
 % original equation
-B_f_ = b_f - b_f.*((K_dr-K_f)./(K_m-K_f)); 
-B_m_ = b_m.*((K_dr-K_f)./(K_m-K_f));
-invN_f_ = (b_f./(K_m-K_f)).*(B_f - v_f.*b_f) + v_f.*invn_f;
-invN_m_ = (b_m./(K_m-K_f)).*(v_m.*b_m - B_m) + v_m.*invn_m;
-invQ_ = (b_m./(K_m-K_f)).*(v_f.*b_f - B_f);
-
-% Jihoon Kim's formuilation (2012)
-B_f = -b_f.*K_dr.*v_f./K_f;
-B_m = -b_m.*K_dr.*v_m./K_m;
-invn_Mm; %inverse of matrix biot modulus: 1/Mm = phi*cf +(b_m-phi)/Ks = phi*cf + invn_m
-invn_Mf; %inverse of fracture biot modulus: 1/Mf = phi*cf +(b_f-phi)/Ks = phi*cf + invn_f
-dff = v_f./K_f.*b_f./B
+B_f = b_f - b_f.*((K_dr-K_f)./(K_m-K_f)); % Kdr b_f in Jihoon KIm's paper
+B_m = b_m.*((K_dr-K_f)./(K_m-K_f)); % K_dr b_m in Jihoon KIm
 invN_f = (b_f./(K_m-K_f)).*(B_f - v_f.*b_f) + v_f.*invn_f;
 invN_m = (b_m./(K_m-K_f)).*(v_m.*b_m - B_m) + v_m.*invn_m;
 invQ = (b_m./(K_m-K_f)).*(v_f.*b_f - B_f);
 
+
+%Jihoon Kim's formuilation (2012)
+% B_f_ = b_f.*K_dr.*v_f./K_f;
+% B_m_ = b_m.*K_dr.*v_m./K_m;
+% Bf_skempton = b_f./(K_f.*invn_f+b_f.^2); %invnf = 1/Mf = phi*cf +(b_f-phi)/Ks = phi*cf + invn_f
+% Bm_skempton = b_m./(K_m.*invn_m+b_m.^2); %invnm = 1/Mm = phi*cf +(b_m-phi)/Ks = phi*cf + invn_m
+% dff = v_f./K_f.*b_f./Bf_skempton;
+% dmm = v_m./K_m.*b_m./Bm_skempton;
+% invN_f_ = dff - B_f_.^2 ./ K_dr; % top part is 1/kdr but this is dimensionless... whioYYy????
+% invN_m_ = dmm - B_m_.^2 ./ K_dr;
+% invQ_ = -B_m_.*B_f_ ./ K_dr;
+
+
+
+B_f = b_f.*K_dr.*v_f./K_f;
+B_m = b_m.*K_dr.*v_m./K_m;
+Bf_skempton = b_f./(K_f.*invn_f+b_f.^2); %invnf = 1/Mf = phi*cf +(b_f-phi)/Ks = phi*cf + invn_f
+Bm_skempton = b_m./(K_m.*invn_m+b_m.^2); %invnm = 1/Mm = phi*cf +(b_m-phi)/Ks = phi*cf + invn_m
+dff = v_f./K_f.*b_f./Bf_skempton;
+dmm = v_m./K_m.*b_m./Bm_skempton;
+invN_f = dff - B_f.^2./ K_dr;
+invN_m = dmm - B_m.^2./ K_dr;
+invQ = -B_m.*B_f./K_dr;
+% 
+% 
+% B_f = b_f.*K_dr.*v_f./K_f;
+% B_m = b_m.*K_dr.*v_m./K_m;
+% Bf_skempton = b_f./(K_f.*invn_f+b_f.^2); %invnf = 1/Mf = phi*cf +(b_f-phi)/Ks = phi*cf + invn_f
+% Bm_skempton = b_m./(K_m.*invn_m+b_m.^2); %invnm = 1/Mm = phi*cf +(b_m-phi)/Ks = phi*cf + invn_m
+% dff = v_f./K_f.*b_f./Bf_skempton;
+% dmm = v_m./K_m.*b_m./Bm_skempton;
+% invN_f = dff + B_f.*b_f;
+% invN_m = dmm + B_m.*b_m;
+% invQ = B_m.*b_f;
 
 B_m = rank2(B_m);
 B_f = rank2(B_f);

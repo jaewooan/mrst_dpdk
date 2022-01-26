@@ -147,6 +147,7 @@ classdef NonLinearSolver < handle
             opt.initialGuess = state;
             assert(dT >= 0, [solver.getId(), 'Negative timestep detected.']);
 
+            [wellVars, wellVarNames, ~] = model.FacilityModel.getAllPrimaryVariables(state.wellSol);
             converged = false;
             done = false;
             early_done = false;

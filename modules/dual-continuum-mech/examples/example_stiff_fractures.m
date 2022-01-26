@@ -9,14 +9,17 @@
 % Within this example we demonstrate the following solvers:
 %   * 'fully coupled'          : fully coupled solver
 
-
+clear
+clc
+close all
 %% Load required modules
 mrstModule add dual-continuum-mech ad-core ad-mechanics dual-porosity ad-props vemmech
 
 
 %% Setup default options
-opt = struct('cartDims'            , [2, 2], ...
-             'L'                  , [10, 10], ...
+nx = 20; ny = 20;
+opt = struct('cartDims'            , [nx, ny], ...
+             'L'                  , [100, 100], ...
              'fluid_model'        , 'water', ...
              'verbose'            , false);
 
@@ -169,7 +172,7 @@ bc_f0 = fluxside(bc_f0, G, 'NORTH', 0, 'sat', 1);
 %% Simulate 
 time = [0, logspace(-4,2,60)];
 dt = diff(time);
-[p_m, p_f, ~, states] = simDC_mech(state0, dt, DC_model, bc_f0);
+[p_m, p_f, u, states] = simDC_mech(state0, dt, DC_model, bc_f0);
 
 
 %% Plot results
@@ -182,5 +185,48 @@ xlabel('time [s]')
 ylabel('average pressure [Pa]')
 legend('matrix', 'fracture')
 title('Results for the intrinsic fracture stiffness simulation')
+
+%% test
+figure
+for i=1:nx
+    X_(i, :) =  G.cells.centroids(nx*(i-1)+1:nx*i,1)';
+    Y_(i, :) =  G.cells.centroids(nx*(i-1)+1:nx*i,2)';
+    R_(i,:) = p_f(nx*(i-1)+1:nx*i,1);
+end
+pcolor(X_, Y_, R_);
+set(gca,'YDir','normal') 
+colorbar
+
+figure
+for i=1:nx
+    X_(i, :) =  G.cells.centroids(nx*(i-1)+1:nx*i,1)';
+    Y_(i, :) =  G.cells.centroids(nx*(i-1)+1:nx*i,2)';
+    R_(i,:) = p_m(nx*(i-1)+1:nx*i,1);
+end
+pcolor(X_, Y_, R_);
+set(gca,'YDir','normal') 
+colorbar
+
+%%
+figure
+for i=1:nx+1
+    X__(i, :) =  G.nodes.coords((nx+1)*(i-1)+1:(nx+1)*i,1)';
+    Y__(i, :) =  G.nodes.coords((nx+1)*(i-1)+1:(nx+1)*i,2)';
+    R__(i,:) = u((nx+1)*2*(i-1)+1:2:(nx+1)*2*i,size(time,2));
+end
+pcolor(X__, Y__, R__);
+set(gca,'YDir','normal') 
+colorbar
+
+
+figure
+for i=1:nx+1
+    X__(i, :) =  G.nodes.coords((nx+1)*(i-1)+1:(nx+1)*i,1)';
+    Y__(i, :) =  G.nodes.coords((nx+1)*(i-1)+1:(nx+1)*i,2)';
+    R__(i, :) = u((nx+1)*2*(i-1)+2:2:(nx+1)*2*i+1,size(time,2));
+end
+pcolor(X__, Y__, R__);
+set(gca,'YDir','normal') 
+colorbar
 
         

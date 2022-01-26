@@ -68,12 +68,17 @@ along with MRST.  If not, see <http://www.gnu.org/licenses/>.
 
             % Different fluid models may be used. 
             model.fluidModel = setupFluidModel(model); 
+            model.oil = model.fluidModel.oil; 
+            model.water = model.fluidModel.water;
+            model.gas = model.fluidModel.gas;
             model.fluidModel.extraStateOutput = 'True';
             model.fluidfds = model.fluidModel.getAllVarsNames(); % get variable names for fluid proble
 
             % Setup mech model
             rock_fracture = rock{1};
             rock_matrix = rock{2};
+            rock_fracture.('cmix') = model.fluid.cmix;
+            rock_matrix.('cmix') = model.fluid_matrix.cmix;
             model.mechModel = DualContMechMechanicModel(model.G, rock_fracture, rock_matrix, mech_problem); % Mechanical problem for FC sim
             model.mechfds = model.mechModel.getAllVarsNames(); % get variable names for mechanical problem
             model.DC_PoroelasticPropertyFunctions = [];

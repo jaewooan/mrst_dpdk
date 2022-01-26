@@ -92,6 +92,11 @@ state = model.initStateFunctionContainers(state);
 
 %% -------------------------------------------------------------------------
 % Rock props
+%%
+% 
+%  PREFORMATTED
+%  TEXT
+% 
 [poro_m, poro_f] = model.getProps(state, 'PoroelasticMatrixPoro', 'PoroelasticFracturePoro');
 [poro_m0, poro_f0] = model.getProps(state0, 'PoroelasticMatrixPoro', 'PoroelasticFracturePoro');
 

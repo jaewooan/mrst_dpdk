@@ -178,11 +178,20 @@ for i = 1:nPh
         fluid.(['mu', n]) = @(p, varargin) constantViscosity(opt.mu(i), p, varargin{:});
     end
     fluid.(['kr', n]) = kr;
+    fluid.(['c', n]) = c;
     fluid.krPts.(lower(n)) = [sl, sl, su, 1];
     if strcmpi(n, 'O') && nPh > 2
         [fluid.krOW, fluid.krOG] = deal(kr);
         [fluid.krPts.ow, fluid.krPts.og] = deal([sl, sl, su, 1]);
     end
+end
+
+if nPh == 1
+    fluid.('cmix') = @(s, varargin) opt.c(1);
+elseif nPh == 2
+    fluid.('cmix') = @(s, varargin) s.*opt.c(1) + (1-s).*opt.c(2);
+else
+    fluid.('cmix') = @(s1, s2, varargin) s1.*opt.c(1) + s2.*opt.c(2) + s3.*opt.c(3);
 end
 
 if ~isempty(opt.cR)

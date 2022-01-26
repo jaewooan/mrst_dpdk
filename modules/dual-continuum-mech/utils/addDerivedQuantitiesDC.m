@@ -53,10 +53,12 @@ along with MRST.  If not, see <http://www.gnu.org/licenses/>.
     % Calculate intrinsic volumetric strains. Calculation based on comparing expressions
     % for effective change in Lagrangian matrix porosity and the volumetric
     % average of the local change of Lagrangian matrix porosity.
+    % MODIFIED: Basically, DPDK assumes the same strain for global, frac,
+    % and matrix (Jihoon KIm, 2012, eq 22 and 23)
     v_part = model.G.cells.volumes./total_vol; % partition volume
-    vol_strain_mat = (invb_m).*((1/v_m)*(sum(cM.B_m.*global_strain, 2) + cM.invN_m.*p_m.*v_part ...
-                                + cM.invQ.*p_f.*v_part) - cM.iP.invn_m.*p_m.*v_part);
-    vol_strain_frac = (model.mechModel.operators.trace(global_strain)-v_m.*vol_strain_mat)./(1-v_m);
+    vol_strain_mat = model.mechModel.operators.trace(global_strain); % (invb_m).*((1/v_m)*(sum(cM.B_m.*global_strain, 2) + cM.invN_m.*p_m.*v_part ...
+                                %+ cM.invQ.*p_f.*v_part) - cM.iP.invn_m.*p_m.*v_part);
+    vol_strain_frac = model.mechModel.operators.trace(global_strain); %(model.mechModel.operators.trace(global_strain)-v_m.*vol_strain_mat)./(1-v_m);
     
     state = setProp(model.mechModel, state, 'vol_strain_frac', vol_strain_frac);
     state = setProp(model.mechModel, state, 'vol_strain_mat', vol_strain_mat);      

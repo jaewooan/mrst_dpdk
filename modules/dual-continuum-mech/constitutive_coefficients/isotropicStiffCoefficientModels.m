@@ -87,10 +87,10 @@ along with MRST.  If not, see <http://www.gnu.org/licenses/>.
                 invn_f = (b_f - phi_f)./(model.mech.K_s);
             end
             %original
-            b_m = ones(model.G.cells.num, 1) - K_m./(model.mech.K_s);
-            invn_m = (b_m - phi_m)./(model.mech.K_s);
-            b_f = ones(model.G.cells.num, 1) - K_f./(model.mech.K_s);
-            invn_f = (b_f - phi_f)./(model.mech.K_s);
+%             b_m = ones(model.G.cells.num, 1) - K_m./(model.mech.K_s);
+%             invn_m = (b_m - phi_m)./(model.mech.K_s);
+%             b_f = ones(model.G.cells.num, 1) - K_f./(model.mech.K_s);
+%             invn_f = (b_f - phi_f)./(model.mech.K_s);
         end
         
         function [B_f, B_m, invN_f, invQ, invN_m] = caculateCoefficients(coefficients, model)
