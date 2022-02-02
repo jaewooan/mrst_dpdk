@@ -1,0 +1,543 @@
+[1mdiff --git a/modules/dual-continuum-mech/examples/perm.mat b/modules/dual-continuum-mech/examples/perm.mat[m
+[1mindex e50c55e..fb0cb40 100644[m
+Binary files a/modules/dual-continuum-mech/examples/perm.mat and b/modules/dual-continuum-mech/examples/perm.mat differ
+[1mdiff --git a/modules/dual-continuum-mech/examples/permGeneration.asv b/modules/dual-continuum-mech/examples/permGeneration.asv[m
+[1mdeleted file mode 100644[m
+[1mindex 611ee97..0000000[m
+[1m--- a/modules/dual-continuum-mech/examples/permGeneration.asv[m
+[1m+++ /dev/null[m
+[36m@@ -1,54 +0,0 @@[m
+[31m-clear[m
+[31m-clc[m
+[31m-close all[m
+[31m-addpath('./SGS/')[m
+[31m-[m
+[31m-%% Input from simulation: please check if this dimension is consistent with the values in the simulation![m
+[31m-Lx = 100; Ly = 100;[m
+[31m-nx = 100; ny = 100; % check [m
+[31m-nCase = 2; % number of realization[m
+[31m-[m
+[31m-%% SGS Setting[m
+[31m-covar.model = 'gaussian'; % type of covariance function, see functions/kriginginitiaite.m for option[m
+[31m-covar.range0 = [nx/10 nx/10]; % range of covariance [d_nx d_ny][m
+[31m-covar.azimuth = 0; % orientation of the covariance[m
+[31m-covar.c0 = 1; % variance[m
+[31m-covar.alpha = 1; % parameter of covariance function (facult)[m
+[31m-parm.saveit = false; % save in a file[m
+[31m-parm.seed_path = 'shuffle'; % seed for the path[m
+[31m-parm.seed_search = 'shuffle'; % seed for the search (equal distance node)[m
+[31m-parm.seed_U = 'shuffle'; % seed of the node value sampling[m
+[31m-parm.mg = 1 ; % multigrid vs randomized path[m
+[31m-neigh.wradius = 3; % maximum range of neighboorhood search, factor of covar.range.[m
+[31m-neigh.lookup = false; % lookup table.[m
+[31m-neigh.nb = 40; % maximum number of neighborhood[m
+[31m-method = 'trad'; % SGS method: cst_par, cst_par_cond, hybrid, varcovar[m
+[31m-[m
+[31m-%% SGS[m
+[31m-[logPermM, t1] = SGS(nx, ny, nCase, covar, neigh, parm, method);[m
+[31m-[logPermF, t2] = SGS(nx, ny, nCase, covar, neigh, parm, method);[m
+[31m-[m
+[31m-i_index = rem([1:nx*ny]-1, nx) + 1;[m
+[31m-j_index = floor(([1:nx*ny]-1)/nx)+1;[m
+[31m-x_centroid = Lx/nx*(i_index-1/2);[m
+[31m-y_centroid = Ly/ny*(j_index-1/2);[m
+[31m-perm_m_tot = exp(reshape(logPermM, nx*ny, nCase));[m
+[31m-perm_f_tot = 100exp(reshape(logPermM, nx*ny, nCase));[m
+[31m-save('perm.mat', perm_m_tot, perm_f_tot, i_index, j_index, x_centroid, y_centroid, nCase);[m
+[31m-[m
+[31m-% figure[m
+[31m-% [Rest, t1] = SGS(nx, ny, nCase, covar, neigh, parm, method);[m
+[31m-% perm1 = exp(Rest);[m
+[31m-% pcolor(perm1)[m
+[31m-% colorbar[m
+[31m-% [m
+[31m-% figure[m
+[31m-% [Rest, t1] = SGS(nx, ny, nCase, covar, neigh, parm, method);[m
+[31m-% perm2 = 100*exp(Rest);[m
+[31m-% pcolor(perm2)[m
+[31m-% colorbar[m
+[31m-% for iCase = 1:nCase[m
+[31m-%     [perm_matrix, perm_fracture] = generatePermField(nx, ny, km_mean, kf_mean, var_m, var_f);[m
+[31m-%     perm_m_tot = [perm_m_tot, perm_matrix]; % index = ny*(j-1) + i[m
+[31m-%     perm_f_tot = [perm_f_tot, perm_fracture];[m
+[31m-% end[m
+\ No newline at end of file[m
+[1mdiff --git a/modules/dual-continuum-mech/examples/permGeneration.m b/modules/dual-continuum-mech/examples/permGeneration.m[m
+[1mindex cda0b21..0f38025 100644[m
+[1m--- a/modules/dual-continuum-mech/examples/permGeneration.m[m
+[1m+++ b/modules/dual-continuum-mech/examples/permGeneration.m[m
+[36m@@ -5,7 +5,7 @@[m [maddpath('./SGS/')[m
+ [m
+ %% Input from simulation: please check if this dimension is consistent with the values in the simulation![m
+ Lx = 100; Ly = 100;[m
+[31m-nx = 10; ny = 10; % check [m
+[32m+[m[32mnx = 100; ny = 100; % check[m[41m [m
+ nCase = 2; % number of realization[m
+ [m
+ %% SGS Setting[m
+[36m@@ -27,17 +27,19 @@[m [mmethod = 'trad'; % SGS method: cst_par, cst_par_cond, hybrid, varcovar[m
+ %% SGS[m
+ [logPermM, t1] = SGS(nx, ny, nCase, covar, neigh, parm, method);[m
+ [logPermF, t2] = SGS(nx, ny, nCase, covar, neigh, parm, method);[m
+[31m-[logEM, t1] = SGS(nx, ny, nCase, covar, neigh, parm, method);[m
+[31m-[logEF, t2] = SGS(nx, ny, nCase, covar, neigh, parm, method);[m
+[32m+[m[32mcovar.c0 = 1e8; % variance[m
+[32m+[m[32m[EM_tot, t1] = SGS(nx, ny, nCase, covar, neigh, parm, method);[m
+[32m+[m[32mcovar.c0 = 1e6; % variance[m
+[32m+[m[32m[EF_tot, t2] = SGS(nx, ny, nCase, covar, neigh, parm, method);[m
+ [m
+ i_index = rem([1:nx*ny]'-1, nx) + 1;[m
+ j_index = floor(([1:nx*ny]'-1)/nx)+1;[m
+ x_centroid = Lx/nx*(i_index-1/2);[m
+ y_centroid = Ly/ny*(j_index-1/2);[m
+ perm_m_tot = exp(reshape(logPermM, nx*ny, nCase));[m
+[31m-perm_f_tot = 100*exp(reshape(logPermF, nx*ny, nCase));[m
+[31m-EM_tot = 1e9*exp(reshape(logEM, nx*ny, nCase));[m
+[31m-EF_tot = 1e7*exp(reshape(logEF, nx*ny, nCase));[m
+[32m+[m[32mperm_f_tot = exp(reshape(logPermF, nx*ny, nCase));[m
+[32m+[m[32mEM_tot = reshape(EM_tot, nx*ny, nCase) + 1e9; % mean: 1e9 var: 1e8 no log[m
+[32m+[m[32mEF_tot = reshape(EF_tot, nx*ny, nCase) + 1e7;[m
+ [m
+ %%[m
+ save('perm.mat', 'perm_m_tot', 'perm_f_tot', 'EM_tot', 'EF_tot', 'i_index', 'j_index', 'x_centroid', 'y_centroid', 'nCase');[m
+[1mdiff --git a/modules/dual-continuum-mech/examples/pm_pf_ux_uy_nt100_ncase_2.mat b/modules/dual-continuum-mech/examples/pm_pf_ux_uy_nt100_ncase_2.mat[m
+[1mindex d1bdd5e..91378e2 100644[m
+Binary files a/modules/dual-continuum-mech/examples/pm_pf_ux_uy_nt100_ncase_2.mat and b/modules/dual-continuum-mech/examples/pm_pf_ux_uy_nt100_ncase_2.mat differ
+[1mdiff --git a/modules/dual-continuum-mech/examples/simulation5Spot.asv b/modules/dual-continuum-mech/examples/simulation5Spot.asv[m
+[1mdeleted file mode 100644[m
+[1mindex 11e4aca..0000000[m
+[1m--- a/modules/dual-continuum-mech/examples/simulation5Spot.asv[m
+[1m+++ /dev/null[m
+[36m@@ -1,347 +0,0 @@[m
+[31m-%% Example of a poromechanical dual-continuum simulation on a 2D grid with[m
+[31m-%  stiff fractures[m
+[31m-%[m
+[31m-% The test problem is a uniaxial single-phase consolidation problem, such that the[m
+[31m-% bottom boundary is fixed, and the left, right and top boundaries admit[m
+[31m-% only vertical displacement. All of the boundaries are no flux boundaries,[m
+[31m-% apart from the top boundary which is drained. [m
+[31m-%[m
+[31m-% Within this example we demonstrate the following solvers:[m
+[31m-%   * 'fully coupled'          : fully coupled solver[m
+[31m-clear[m
+[31m-clc[m
+[31m-close all[m
+[31m-[m
+[31m-%% Load required modules[m
+[31m-mrstModule add dual-continuum-mech ad-core ad-mechanics dual-porosity ad-props vemmech[m
+[31m-[m
+[31m-%% Basic Simulation input setting[m
+[31m-nx = 10; ny = 10; [m
+[31m-Lx = 100; Ly = 100; %m[m
+[31m-porom = 0.375; porof = 0.9;[m
+[31m-rho = 1000; %kg/m3[m
+[31m-cf = 4.4e-10; %fluid compressibility 1/pa[m
+[31m-pref = 0; %pa[m
+[31m-K_s = -999; % Solid stiffness, for biot = 1, Ks = infty = K / (1-biot_coeff)[m
+[31m-time = linspace(1, 100, 100)*day; % sec[m
+[31m-force = 5e7; % pa, boundary traction[m
+[31m-p_init = 1e7; % pa, initial pressure[m
+[31m-sat_init = 1;[m
+[31m-vol_f = 0.0001; % frac vol fraction[m
+[31m-PV = Lx*Ly *((1-vol_f)*porom + vol_f*porof);[m
+[31m-q_inj = 0.5*PV/time(end); % m/sec[m
+[31m-q_prod = q_inj; % m/sec[m
+[31m-well_radius = 0.1; %m[m
+[31m-d1 = Lx/nx/100; % m, spacing of fracture set 1[m
+[31m-d2 = d1; % m, spacing of fracture set 2[m
+[31m-[m
+[31m-%% Uncertainty generation[m
+[31m-% Expected uncertainty for future..[m
+[31m-nu = 0.25; % Poisson's ratio[m
+[31m-nu_m = nu*ones(nx*ny,1); % Poisson's ratio of matrix continuum[m
+[31m-nu_f = nu*ones(nx*ny,1); % Poisson's ratio of fracture continuum[m
+[31m-%E_m = 1e9*ones(nx*ny,1); % Young's modulus of matrix continuum[m
+[31m-%E_f = 1e7*ones(nx*ny,1); % Young's modulus of matrix continuum[m
+[31m-mu = 1; % centipoise = 1e-3 pa[m
+[31m-[m
+[31m-% our target for uncertainty: perm[m
+[31m-% km = 1; kf = 100; %md[m
+[31m-% perm_matrix = km*milli*darcy*ones(nx,ny); [m
+[31m-% perm_fracture = kf*milli*darcy*ones(nx,ny); [m
+[31m-[m
+[31m-% Load SGS perm files[m
+[31m-load('perm.mat');[m
+[31m-results=zeros(0,0);[m
+[31m-for i=1:nCase[m
+[31m-    %% Setup default options[m
+[31m-    E_m = reshape(EM_tot(:,i), nx*ny, 1);[m
+[31m-    E_f = reshape(EF_tot(:,i), nx*ny, 1);[m
+[31m-    perm_matrix = reshape(perm_m_tot(:,i), nx, ny)*milli*darcy;[m
+[31m-    perm_fracture = reshape(perm_f_tot(:,i), nx, ny)*milli*darcy;[m
+[31m-    opt = struct('cartDims'            , [nx, ny], ...[m
+[31m-                 'L'                  , [Lx, Ly], ...[m
+[31m-                 'fluid_model'        , 'water', ...[m
+[31m-                 'verbose'            , false);[m
+[31m-    [m
+[31m-                 [m
+[31m-    %% Setup Grid[m
+[31m-    G = cartGrid(opt.cartDims, opt.L);[m
+[31m-    G = computeGeometry(G);[m
+[31m-    %plotGrid(G);[m
+[31m-    [m
+[31m-    [m
+[31m-    %% Setup rock parameters (for flow)[m
+[31m-    % fracture[m
+[31m-    rock_fracture = struct('perm', reshape(perm_fracture, [], 1), ...[m
+[31m-                  'poro', ones(G.cells.num, 1)*porom,... [m
+[31m-                  'vol_fraction', ones(G.cells.num, 1)*vol_f); [m
+[31m-                   % note, poro = intrinsic_poro*vol_fraction, therefore, for[m
+[31m-                   % this case intrinsic_poro is 0.6[m
+[31m-    [m
+[31m-    % matrix[m
+[31m-    rock_matrix = struct('perm', reshape(perm_matrix, [], 1), ...[m
+[31m-                  'poro', ones(G.cells.num, 1)*porof,...[m
+[31m-                  'vol_fraction', ones(G.cells.num, 1)-rock_fracture.vol_fraction);[m
+[31m-              [m
+[31m-              [m
+[31m-    %% Setup fluid model, the current implementation only admits single-phase flow[m
+[31m-    % but the code is sufficiently generalisable to admit multi-phase flow. [m
+[31m-    fluid = initSimpleADIFluid('phases', 'W', 'mu', mu*centi*poise, 'rho', ...[m
+[31m-                                       rho*kilogram/meter^3, 'c', ...[m
+[31m-                                       cf, 'pRef', pref);[m
+[31m-    fluid_fracture = fluid;[m
+[31m-    fluid_matrix = fluid; [m
+[31m-    [m
+[31m-    [m
+[31m-    %% Setup material parameters for Biot and mechanics[m
+[31m-    [E, dd1, dd2, nu] = HS_bound(E_m, E_f, nu_m, nu_f, rock_matrix.vol_fraction,...[m
+[31m-                 rock_fracture.vol_fraction, 'lower'); % Young's modulus of fractured rock mass with HS lower bound[m
+[31m-    [m
+[31m-    [m
+[31m-    %E = repmat(E, G.cells.num, 1);[m
+[31m-    [m
+[31m-    [m
+[31m-    %% Setup boundary conditions for mechanics[m
+[31m-    % we first want to create a structure 'bc', which we can fudge by[m
+[31m-    % initialising the bc's using pside. [m
+[31m-    oside = {'WEST', 'EAST', 'SOUTH', 'NORTH'};[m
+[31m-    bc = cell(4,1);[m
+[31m-    % for i = 1:numel(oside)[m
+[31m-    %     bc{i} = pside([], G, oside{i}, 0);[m
+[31m-    %     bc{i} = rmfield(bc{i}, 'type'); [m
+[31m-    %     bc{i} = rmfield(bc{i}, 'sat');    [m
+[31m-    % end[m
+[31m-    [m
+[31m-    for i = 1:numel(oside)[m
+[31m-        bc{i} = fluxside([], G, oside{i}, 0);[m
+[31m-        bc{i} = rmfield(bc{i}, 'type'); [m
+[31m-        bc{i} = rmfield(bc{i}, 'sat');    [m
+[31m-    end[m
+[31m-    [m
+[31m-    % Displacement BCs[m
+[31m-    % Find the nodes for the different sides and set the boundaray conditions for[m
+[31m-    % elasticity.[m
+[31m-    for i = 1 : 4[m
+[31m-        inodes = mcolon(G.faces.nodePos(bc{i}.face), G.faces.nodePos(bc{i}.face + 1) - 1);[m
+[31m-        nodes = unique(G.faces.nodes(inodes));[m
+[31m-        disp_bc = struct('nodes'   , nodes,      ...[m
+[31m-                         'uu'      , 0,          ...[m
+[31m-                         'faces'   , bc{i}.face, ...[m
+[31m-                         'uu_face' , 0,          ...          [m
+[31m-                         'mask'    , true(numel(nodes), G.griddim));[m
+[31m-        bc{i}.el_bc = struct('disp_bc', disp_bc, 'force_bc', []);[m
+[31m-    end[m
+[31m-    bcdisp_zero = @(x) x*0.0; % Boundary displacement function set to zero.[m
+[31m-    bc_el_sides{1} = bc{1}; [m
+[31m-    bc_el_sides{1}.el_bc.disp_bc.mask(:, 2) = false;   % west: x fixed, y free[m
+[31m-    bc_el_sides{2} = bc{2}; [m
+[31m-    bc_el_sides{2}.el_bc.disp_bc.mask(:, :) = false;   % east x free, y free[m
+[31m-    bc_el_sides{3} = bc{3}; [m
+[31m-    bc_el_sides{3}.el_bc.disp_bc.mask(:, 1) = false;    % south x free, y fixed[m
+[31m-    bc_el_sides{4} = bc{4}; [m
+[31m-    bc_el_sides{4}.el_bc.disp_bc.mask(:, :) = false;   % north x free, y free[m
+[31m-    [m
+[31m-    % collect the displacement boundary conditions[m
+[31m-    nodes = [];[m
+[31m-    faces = [];[m
+[31m-    mask = [];[m
+[31m-    for i = 1 : numel(bc)[m
+[31m-        if(~isempty(bc_el_sides{i}))[m
+[31m-            nodes = [nodes; bc_el_sides{i}.el_bc.disp_bc.nodes]; %#ok[m
+[31m-            faces = [faces; bc_el_sides{i}.el_bc.disp_bc.faces]; %#ok[m
+[31m-            mask  = [mask; bc_el_sides{i}.el_bc.disp_bc.mask]; %#ok[m
+[31m-        end[m
+[31m-    end[m
+[31m-    [m
+[31m-    disp_node = bcdisp_zero(G.nodes.coords(nodes, :));[m
+[31m-    disp_faces = bcdisp_zero(G.faces.centroids(faces, :)); [m
+[31m-    disp_bc = struct('nodes', nodes, 'uu', disp_node, 'faces', faces, 'uu_face', disp_faces, 'mask', mask); [m
+[31m-    [m
+[31m-    % Force BCs[m
+[31m-    nEast = 2;[m
+[31m-    nNorth = 4;[m
+[31m-    facesf = [bc{nEast}.face; bc{nNorth}.face]; % same traction at the top and right[m
+[31m-    force_vec = [force*ones(size(bc{nEast}.face, 1),1)*[-1 0];...[m
+[31m-                 force*ones(size(bc{nNorth}.face, 1),1)*[0 -1]];[m
+[31m-    force_bc = struct('faces', facesf, 'force', force_vec);[m
+[31m-    el_bc = struct('disp_bc', disp_bc, 'force_bc', force_bc);[m
+[31m-    [m
+[31m-    [m
+[31m-    %% Gravity[m
+[31m-    % the gravity in this option affects only the fluid behaviour[m
+[31m-    gravity off;[m
+[31m-        [m
+[31m-    [m
+[31m-    %% Setup load for mechanics[m
+[31m-    % in this example we do not impose any volumetric force[m
+[31m-    load = @(x) (0*x);[m
+[31m-    [m
+[31m-    [m
+[31m-    %% Gather all the mechanical parameters in a struct that will be used to[m
+[31m-    % to define the mech problem[m
+[31m-    mech = struct('E', E, 'nu', nu, 'E_m', E_m, 'nu_m', nu_m, 'E_f', E_f, 'nu_f', nu_f,...[m
+[31m-                  'K_s', K_s, 'el_bc', el_bc, 'load', load);[m
+[31m-    [m
+[31m-    %% Setup fully coupled and fixed stress splitting models[m
+[31m-    fullycoupledOptions = {'verbose', opt.verbose};[m
+[31m-    DC_model = DualContMechWaterModel(G, {rock_fracture, rock_matrix}, {fluid_fracture, fluid_matrix}, mech, fullycoupledOptions{:});[m
+[31m-    DC_model.nonlinearTolerance = 1e-8;[m
+[31m-    fracture_spacing = repmat([d1,d2],G.cells.num,1);[m
+[31m-    shape_factor_name = 'Lim_AzizShapeFactor';[m
+[31m-    DC_model.transfer_model_object = SimpleTransferFunction(shape_factor_name, fracture_spacing);[m
+[31m-    DC_model = DC_model.validateModel();[m
+[31m-    [m
+[31m-    %% Setup initial state and fluid BCs[m
+[31m-    pressure = ones(G.cells.num,1)*p_init; % pa[m
+[31m-    state0 = struct('pressure', pressure, 'pressure_matrix', pressure, 's', sat_init*ones(G.cells.num, 1), 'swm', sat_init*ones(G.cells.num, 1));[m
+[31m-    [m
+[31m-    % need to initiate the fluid bc's, bc's are the same for micro and macro scales [m
+[31m-    bc_f0 = fluxside([], G, 'WEST', 0, 'sat', 1); % no flow boundary[m
+[31m-    bc_f0 = fluxside(bc_f0 , G, 'EAST', 0, 'sat', 1); % no flow boundary[m
+[31m-    bc_f0 = fluxside(bc_f0, G, 'SOUTH', 0, 'sat', 1); % no flow boundary[m
+[31m-    bc_f0 = fluxside(bc_f0, G, 'NORTH', 0, 'sat', 1); % no flow boundary[m
+[31m-    %bc_f0 = pside(bc_f0 , G, 'SOUTH', 0, 'sat', 1); % free boundary[m
+[31m-    [m
+[31m-    %% Simulate [m
+[31m-    dt = diff(time);[m
+[31m-    W = [];[m
+[31m-    W = addWell(W, DC_model.G, DC_model.rock, 1, 'Type', 'rate', ...[m
+[31m-         'comp_i', [1, 0, 0], 'Name', ['INJ'], 'Val', q_inj, 'sign', 1, 'Radius', well_radius, 'Dir','z');[m
+[31m-%     W = addWell(W, DC_model.G, DC_model.rock, nx*ny, 'Type', 'rate', ...[m
+[31m-%          'Name', ['PROD'], 'Val', -q_prod, 'sign', -1, 'Radius', well_radius, 'Dir','z');[m
+[31m-%     W = addWell(W, DC_model.G, DC_model.rock, 1, 'Type', 'bhp', ...[m
+[31m-%          'comp_i', [1, 0, 0], 'Name', ['INJ'], 'Val', 3*p_init, 'sign', 1, 'Radius', well_radius, 'Dir','z');[m
+[31m-    W = addWell(W, DC_model.G, DC_model.rock, nx*ny, 'Type', 'bhp', ...[m
+[31m-         'Name', ['PROD'], 'Val', p_init, 'sign', -1, 'Radius', well_radius, 'Dir','z');[m
+[31m-    [p_m, p_f, u, states] = simDC_mech(state0, dt, DC_model, bc_f0, W);[m
+[31m-    result_ = [p_m;p_f;u(1:2:2*(nx+1)*(ny+1),:);u(2:2:2*(nx+1)*(ny+1),:)]; %pm, pf, ux, uy[m
+[31m-    results = [results,reshape(result_, size(result_,1)*size(result_,2),1)];[m
+[31m-end[m
+[31m-[m
+[31m-name = fprintf('pmpfuxuyt%d.mat')[m
+[31m-save('pmpfuxuyt.mat', 'results');[m
+[31m-[m
+[31m-%% Plot results[m
+[31m-figure[m
+[31m-semilogx(time, p_m(1, :), '-', 'linewidth', 1.5)[m
+[31m-hold on[m
+[31m-semilogx(time, p_f(1, :), '--', 'linewidth', 1.5, 'markersize', 6)[m
+[31m-hold on[m
+[31m-xlabel('time [s]')[m
+[31m-ylabel('average pressure [Pa]')[m
+[31m-legend('matrix', 'fracture')[m
+[31m-title('Results for the intrinsic fracture stiffness simulation')[m
+[31m-[m
+[31m-%% test[m
+[31m-close all[m
+[31m-figure[m
+[31m-tplot = 50;[m
+[31m-for i=1:nx[m
+[31m-    X_(i, :) =  G.cells.centroids(nx*(i-1)+1:nx*i,1)';[m
+[31m-    Y_(i, :) =  G.cells.centroids(nx*(i-1)+1:nx*i,2)';[m
+[31m-    R_(i,:) = p_f(nx*(i-1)+1:nx*i,tplot);[m
+[31m-end[m
+[31m-pcolor(X_, Y_, R_);[m
+[31m-title('fracture pressure')[m
+[31m-shading interp[m
+[31m-set(gca,'YDir','normal') [m
+[31m-colorbar[m
+[31m-[m
+[31m-figure[m
+[31m-for i=1:nx[m
+[31m-    X_(i, :) =  G.cells.centroids(nx*(i-1)+1:nx*i,1)';[m
+[31m-    Y_(i, :) =  G.cells.centroids(nx*(i-1)+1:nx*i,2)';[m
+[31m-    R_2(i,:) = p_m(nx*(i-1)+1:nx*i,tplot);[m
+[31m-end[m
+[31m-pcolor(X_, Y_, R_2);[m
+[31m-title('matrix pressure')[m
+[31m-shading interp[m
+[31m-set(gca,'YDir','normal') [m
+[31m-colorbar[m
+[31m-[m
+[31m-figure[m
+[31m-pcolor(X_, Y_, R_ - R_2);[m
+[31m-title('Pf - Pm')[m
+[31m-shading interp[m
+[31m-set(gca,'YDir','normal') [m
+[31m-colorbar[m
+[31m-[m
+[31m-[m
+[31m-figure[m
+[31m-for i=1:nx[m
+[31m-    X_(i, :) =  G.cells.centroids(nx*(i-1)+1:nx*i,1)';[m
+[31m-    Y_(i, :) =  G.cells.centroids(nx*(i-1)+1:nx*i,2)';[m
+[31m-    R_(i, :) = states{tplot}.stress(nx*(i-1)+1:nx*i,1);[m
+[31m-end[m
+[31m-pcolor(X_, Y_, R_);[m
+[31m-shading interp[m
+[31m-title('stress_x')[m
+[31m-set(gca,'YDir','normal') [m
+[31m-colorbar[m
+[31m-[m
+[31m-figure[m
+[31m-for i=1:nx[m
+[31m-    X_(i, :) =  G.cells.centroids(nx*(i-1)+1:nx*i,1)';[m
+[31m-    Y_(i, :) =  G.cells.centroids(nx*(i-1)+1:nx*i,2)';[m
+[31m-    R_(i, :) = states{tplot}.stress(nx*(i-1)+1:nx*i, 2);[m
+[31m-end[m
+[31m-pcolor(X_, Y_, R_);[m
+[31m-shading interp[m
+[31m-title('stress_y')[m
+[31m-set(gca,'YDir','normal') [m
+[31m-colorbar[m
+[31m-[m
+[31m-[m
+[31m-figure[m
+[31m-for i=1:nx+1[m
+[31m-    X__(i, :) =  G.nodes.coords((nx+1)*(i-1)+1:(nx+1)*i,1)';[m
+[31m-    Y__(i, :) =  G.nodes.coords((nx+1)*(i-1)+1:(nx+1)*i,2)';[m
+[31m-    R__(i,:) = u((nx+1)*2*(i-1)+1:2:(nx+1)*2*i,tplot);[m
+[31m-end[m
+[31m-pcolor(X__, Y__, R__);[m
+[31m-shading interp[m
+[31m-title('Ux')[m
+[31m-set(gca,'YDir','normal') [m
+[31m-colorbar[m
+[31m-[m
+[31m-[m
+[31m-figure[m
+[31m-for i=1:nx+1[m
+[31m-    X__(i, :) =  G.nodes.coords((nx+1)*(i-1)+1:(nx+1)*i,1)';[m
+[31m-    Y__(i, :) =  G.nodes.coords((nx+1)*(i-1)+1:(nx+1)*i,2)';[m
+[31m-    R__(i, :) = u((nx+1)*2*(i-1)+2:2:(nx+1)*2*i+1,tplot);[m
+[31m-end[m
+[31m-pcolor(X__, Y__, R__);[m
+[31m-shading interp[m
+[31m-title('Uy')[m
+[31m-set(gca,'YDir','normal') [m
+[31m-colorbar[m
+[31m-[m
+[31m-[m
+[31m-figure[m
+[31m-pcolor(log10(perm_matrix));[m
+[31m-title('log matrix perm')[m
+[31m-shading interp[m
+[31m-set(gca,'YDir','normal') [m
+[31m-colorbar[m
+[31m-[m
+[31m-figure[m
+[31m-pcolor(log10(perm_fracture));[m
+[31m-title('log fracture perm')[m
+[31m-shading interp[m
+[31m-set(gca,'YDir','normal') [m
+[31m-colorbar[m
+[31m-        [m
+[31m-figure[m
+[31m-pcolor(log10(reshape(E_f, nx,ny)));[m
+[31m-title('Ef')[m
+[31m-shading interp[m
+[31m-set(gca,'YDir','normal') [m
+[31m-colorbar[m
+[31m-[m
+[31m-figure[m
+[31m-pcolor(log10(reshape(E_m,nx,ny)));[m
+[31m-title('Em')[m
+[31m-shading interp[m
+[31m-set(gca,'YDir','normal') [m
+[31m-colorbar[m
+\ No newline at end of file[m
+[1mdiff --git a/modules/dual-continuum-mech/examples/simulation5Spot.m b/modules/dual-continuum-mech/examples/simulation5Spot.m[m
+[1mindex 310482f..38dc90a 100644[m
+[1m--- a/modules/dual-continuum-mech/examples/simulation5Spot.m[m
+[1m+++ b/modules/dual-continuum-mech/examples/simulation5Spot.m[m
+[36m@@ -32,32 +32,32 @@[m [mPV = Lx*Ly *((1-vol_f)*porom + vol_f*porof);[m
+ q_inj = 0.5*PV/time(end); % m/sec[m
+ q_prod = q_inj; % m/sec[m
+ well_radius = 0.1; %m[m
+[31m-d1 = Lx/nx/100; % m, spacing of fracture set 1[m
+[31m-d2 = d1; % m, spacing of fracture set 2[m
+[32m+[m[32md1 = Lx/nx*0.9; % m, spacing of matrix in x[m[41m[m
+[32m+[m[32md2 = d1; % m, spacing of matrix in y: bulk length - fracture spacing[m[41m[m
+ [m
+ %% Uncertainty generation[m
+ % Expected uncertainty for future..[m
+ nu = 0.25; % Poisson's ratio[m
+ nu_m = nu*ones(nx*ny,1); % Poisson's ratio of matrix continuum[m
+ nu_f = nu*ones(nx*ny,1); % Poisson's ratio of fracture continuum[m
+[31m-%E_m = 1e9*ones(nx*ny,1); % Young's modulus of matrix continuum[m
+[31m-%E_f = 1e7*ones(nx*ny,1); % Young's modulus of matrix continuum[m
+[32m+[m[32mE_m = 1e9*ones(nx*ny,1); % Young's modulus of matrix continuum[m[41m[m
+[32m+[m[32mE_f = 1e7*ones(nx*ny,1); % Young's modulus of fracture continuum[m[41m[m
+ mu = 1; % centipoise = 1e-3 pa[m
+ [m
+ % our target for uncertainty: perm[m
+[31m-% km = 1; kf = 100; %md[m
+[31m-% perm_matrix = km*milli*darcy*ones(nx,ny); [m
+[31m-% perm_fracture = kf*milli*darcy*ones(nx,ny); [m
+[32m+[m[32mkm = 1; kf = 100; %md[m[41m[m
+[32m+[m[32mperm_matrix = km*milli*darcy*ones(nx,ny);[m[41m [m
+[32m+[m[32mperm_fracture = kf*milli*darcy*ones(nx,ny);[m[41m [m
+ [m
+ % Load SGS perm files[m
+ load('perm.mat');[m
+ results=zeros(0,0);[m
+[31m-for i=1:nCase[m
+[32m+[m[32mfor i=1:nCase % nCase = 10000, nx = 100, ny = 100[m[41m[m
+     %% Setup default options[m
+     E_m = reshape(EM_tot(:,i), nx*ny, 1);[m
+     E_f = reshape(EF_tot(:,i), nx*ny, 1);[m
+[31m-    perm_matrix = reshape(perm_m_tot(:,i), nx, ny)*milli*darcy;[m
+[31m-    perm_fracture = reshape(perm_f_tot(:,i), nx, ny)*milli*darcy;[m
+[32m+[m[32m%     perm_matrix = reshape(perm_m_tot(:,i), nx, ny)*milli*darcy;[m[41m[m
+[32m+[m[32m%     perm_fracture = reshape(perm_f_tot(:,i), nx, ny)*milli*darcy;[m[41m[m
+     opt = struct('cartDims'            , [nx, ny], ...[m
+                  'L'                  , [Lx, Ly], ...[m
+                  'fluid_model'        , 'water', ...[m
+[36m@@ -207,12 +207,12 @@[m [mfor i=1:nCase[m
+     W = [];[m
+     W = addWell(W, DC_model.G, DC_model.rock, 1, 'Type', 'rate', ...[m
+          'comp_i', [1, 0, 0], 'Name', ['INJ'], 'Val', q_inj, 'sign', 1, 'Radius', well_radius, 'Dir','z');[m
+[31m-%     W = addWell(W, DC_model.G, DC_model.rock, nx*ny, 'Type', 'rate', ...[m
+[31m-%          'Name', ['PROD'], 'Val', -q_prod, 'sign', -1, 'Radius', well_radius, 'Dir','z');[m
+[32m+[m[32m    W = addWell(W, DC_model.G, DC_model.rock, nx*ny, 'Type', 'rate', ...[m[41m[m
+[32m+[m[32m         'Name', ['PROD'], 'Val', -q_prod, 'sign', -1, 'Radius', well_radius, 'Dir','z');[m[41m[m
+ %     W = addWell(W, DC_model.G, DC_model.rock, 1, 'Type', 'bhp', ...[m
+ %          'comp_i', [1, 0, 0], 'Name', ['INJ'], 'Val', 3*p_init, 'sign', 1, 'Radius', well_radius, 'Dir','z');[m
+[31m-    W = addWell(W, DC_model.G, DC_model.rock, nx*ny, 'Type', 'bhp', ...[m
+[31m-         'Name', ['PROD'], 'Val', p_init, 'sign', -1, 'Radius', well_radius, 'Dir','z');[m
+[32m+[m[32m%     W = addWell(W, DC_model.G, DC_model.rock, nx*ny, 'Type', 'bhp', ...[m[41m[m
+[32m+[m[32m%          'Name', ['PROD'], 'Val', p_init, 'sign', -1, 'Radius', well_radius, 'Dir','z');[m[41m[m
+     [p_m, p_f, u, states] = simDC_mech(state0, dt, DC_model, bc_f0, W);[m
+     result_ = [p_m;p_f;u(1:2:2*(nx+1)*(ny+1),:);u(2:2:2*(nx+1)*(ny+1),:)]; %pm, pf, ux, uy[m
+     results = [results,reshape(result_, size(result_,1)*size(result_,2),1)];[m
+[36m@@ -223,17 +223,15 @@[m [msave(name, 'results');[m
+ [m
+ %% Plot results[m
+ figure[m
+[31m-semilogx(time, p_m(1, :), '-', 'linewidth', 1.5)[m
+[32m+[m[32msemilogx(time, p_m(nx*ny, :), '-', 'linewidth', 1.5)[m[41m[m
+ hold on[m
+[31m-semilogx(time, p_f(1, :), '--', 'linewidth', 1.5, 'markersize', 6)[m
+[32m+[m[32msemilogx(time, p_f(nx*ny, :), '--', 'linewidth', 1.5, 'markersize', 6)[m[41m[m
+ hold on[m
+ xlabel('time [s]')[m
+ ylabel('average pressure [Pa]')[m
+ legend('matrix', 'fracture')[m
+ title('Results for the intrinsic fracture stiffness simulation')[m
+ [m
+[31m-%% test[m
+[31m-close all[m
+ figure[m
+ tplot = 50;[m
+ for i=1:nx[m

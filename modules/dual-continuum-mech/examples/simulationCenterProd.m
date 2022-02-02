@@ -18,22 +18,22 @@ mrstModule add dual-continuum-mech ad-core ad-mechanics dual-porosity ad-props v
 %% Basic Simulation input setting
 nx = 10; ny = 10; 
 Lx = 100; Ly = 100; %m
-porom = 0.375; porof = 0.9;
+porom = 0.3; porof = 0.5;
 rho = 1000; %kg/m3
-cf = 4.4e-10; %fluid compressibility 1/pa
+cf = 1e-10; %fluid compressibility 1/pa
 pref = 0; %pa
 K_s = -999; % Solid stiffness, for biot = 1, Ks = infty = K / (1-biot_coeff)
-time = linspace(1, 100, 100)*day; % sec
+time = linspace(0.01, 1, 100)*day; % sec
 force = 5e7; % pa, boundary traction
-p_init = 1e7; % pa, initial pressure
+p_init = 3e7; % pa, initial pressure
 sat_init = 1;
-vol_f = 0.0001; % frac vol fraction
+vol_f = 0.02; % frac vol fraction
 PV = Lx*Ly *((1-vol_f)*porom + vol_f*porof);
-q_inj = 0.5*PV/time(end); % m/sec
+q_inj = 0.5*PV/time(end)/10; % m/sec
 q_prod = q_inj; % m/sec
 well_radius = 0.1; %m
-d1 = Lx/nx*0.9; % m, spacing of matrix in x
-d2 = d1; % m, spacing of matrix in y: bulk length - fracture spacing
+d1 = 0.03;%Lx/nx/100; % m, spacing of fracture set 1
+d2 = d1; % m, spacing of fracture set 2
 
 %% Uncertainty generation
 % Expected uncertainty for future..
@@ -41,22 +41,22 @@ nu = 0.25; % Poisson's ratio
 nu_m = nu*ones(nx*ny,1); % Poisson's ratio of matrix continuum
 nu_f = nu*ones(nx*ny,1); % Poisson's ratio of fracture continuum
 E_m = 1e9*ones(nx*ny,1); % Young's modulus of matrix continuum
-E_f = 1e7*ones(nx*ny,1); % Young's modulus of fracture continuum
+E_f = 1e6*ones(nx*ny,1); % Young's modulus of fracture continuum
 mu = 1; % centipoise = 1e-3 pa
 
 % our target for uncertainty: perm
-km = 1; kf = 100; %md
-perm_matrix = km*milli*darcy*ones(nx,ny); 
-perm_fracture = kf*milli*darcy*ones(nx,ny); 
+% km = 1; kf = 100; %md
+perm_matrix = 0.01*milli*darcy*ones(nx,ny); 
+perm_fracture = 1000*milli*darcy*ones(nx,ny); 
 
 % Load SGS perm files
 load('perm.mat');
 results=zeros(0,0);
-for i=1:nCase % nCase = 10000, nx = 100, ny = 100
+for i=1:nCase
     %% Setup default options
-    E_m = reshape(EM_tot(:,i), nx*ny, 1);
-    E_f = reshape(EF_tot(:,i), nx*ny, 1);
-%     perm_matrix = reshape(perm_m_tot(:,i), nx, ny)*milli*darcy;
+%     E_m = reshape(EM_tot(:,i), nx*ny, 1);
+%     E_f = reshape(EF_tot(:,i), nx*ny, 1);
+%     perm_matrix = reshape(perm_m_tot(:,i), nx, ny)*milli*darcy*0.01;
 %     perm_fracture = reshape(perm_f_tot(:,i), nx, ny)*milli*darcy;
     opt = struct('cartDims'            , [nx, ny], ...
                  'L'                  , [Lx, Ly], ...
@@ -185,7 +185,7 @@ for i=1:nCase % nCase = 10000, nx = 100, ny = 100
     %% Setup fully coupled and fixed stress splitting models
     fullycoupledOptions = {'verbose', opt.verbose};
     DC_model = DualContMechWaterModel(G, {rock_fracture, rock_matrix}, {fluid_fracture, fluid_matrix}, mech, fullycoupledOptions{:});
-    DC_model.nonlinearTolerance = 1e-8;
+    DC_model.nonlinearTolerance = 1e-10;
     fracture_spacing = repmat([d1,d2],G.cells.num,1);
     shape_factor_name = 'Lim_AzizShapeFactor';
     DC_model.transfer_model_object = SimpleTransferFunction(shape_factor_name, fracture_spacing);
@@ -204,15 +204,14 @@ for i=1:nCase % nCase = 10000, nx = 100, ny = 100
     
     %% Simulate 
     dt = diff(time);
+    cellCenters = [nx*(ny/2-1) + nx/2+3];
     W = [];
-    W = addWell(W, DC_model.G, DC_model.rock, 1, 'Type', 'rate', ...
-         'comp_i', [1, 0, 0], 'Name', ['INJ'], 'Val', q_inj, 'sign', 1, 'Radius', well_radius, 'Dir','z');
-    W = addWell(W, DC_model.G, DC_model.rock, nx*ny, 'Type', 'rate', ...
-         'Name', ['PROD'], 'Val', -q_prod, 'sign', -1, 'Radius', well_radius, 'Dir','z');
-%     W = addWell(W, DC_model.G, DC_model.rock, 1, 'Type', 'bhp', ...
-%          'comp_i', [1, 0, 0], 'Name', ['INJ'], 'Val', 3*p_init, 'sign', 1, 'Radius', well_radius, 'Dir','z');
-%     W = addWell(W, DC_model.G, DC_model.rock, nx*ny, 'Type', 'bhp', ...
-%          'Name', ['PROD'], 'Val', p_init, 'sign', -1, 'Radius', well_radius, 'Dir','z');
+%     W = addWell(W, DC_model.G, DC_model.rock, 1, 'Type', 'rate', ...
+%          'comp_i', [1, 0, 0], 'Name', ['INJ'], 'Val', q_inj, 'sign', 1, 'Radius', well_radius, 'Dir','z');
+%     W = addWell(W, DC_model.G, DC_model.rock, cellCenters, 'Type', 'rate', ...
+%          'Name', ['PROD'], 'Val', -q_prod, 'sign', -1, 'Radius', well_radius, 'Dir','x');
+    W = addWell(W, DC_model.G, DC_model.rock, cellCenters, 'Type', 'bhp', ...
+         'Name', ['PROD'], 'Val', p_init, 'sign', -1, 'Radius', well_radius, 'Dir','z');
     [p_m, p_f, u, states] = simDC_mech(state0, dt, DC_model, bc_f0, W);
     result_ = [p_m;p_f;u(1:2:2*(nx+1)*(ny+1),:);u(2:2:2*(nx+1)*(ny+1),:)]; %pm, pf, ux, uy
     results = [results,reshape(result_, size(result_,1)*size(result_,2),1)];
@@ -222,10 +221,11 @@ name = sprintf('pm_pf_ux_uy_nt%d_ncase_%d.mat', length(time), nCase);
 save(name, 'results');
 
 %% Plot results
+close all
 figure
-semilogx(time, p_m(nx*ny, :), '-', 'linewidth', 1.5)
+semilogx(time, p_m(nx*(ny/2-1) + nx/2, :), '-', 'linewidth', 1.5)
 hold on
-semilogx(time, p_f(nx*ny, :), '--', 'linewidth', 1.5, 'markersize', 6)
+semilogx(time, p_f(nx*(ny/2-1) + nx/2, :), '--', 'linewidth', 1.5, 'markersize', 6)
 hold on
 xlabel('time [s]')
 ylabel('average pressure [Pa]')
@@ -233,7 +233,7 @@ legend('matrix', 'fracture')
 title('Results for the intrinsic fracture stiffness simulation')
 
 figure
-tplot = 50;
+tplot = 1;
 for i=1:nx
     X_(i, :) =  G.cells.centroids(nx*(i-1)+1:nx*i,1)';
     Y_(i, :) =  G.cells.centroids(nx*(i-1)+1:nx*i,2)';

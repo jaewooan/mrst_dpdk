@@ -5,7 +5,7 @@ addpath('./SGS/')
 
 %% Input from simulation: please check if this dimension is consistent with the values in the simulation!
 Lx = 100; Ly = 100;
-nx = 10; ny = 10; % check 
+nx = 100; ny = 100; % check 
 nCase = 2; % number of realization
 
 %% SGS Setting
@@ -27,17 +27,19 @@ method = 'trad'; % SGS method: cst_par, cst_par_cond, hybrid, varcovar
 %% SGS
 [logPermM, t1] = SGS(nx, ny, nCase, covar, neigh, parm, method);
 [logPermF, t2] = SGS(nx, ny, nCase, covar, neigh, parm, method);
-[logEM, t1] = SGS(nx, ny, nCase, covar, neigh, parm, method);
-[logEF, t2] = SGS(nx, ny, nCase, covar, neigh, parm, method);
+covar.c0 = 1e8; % variance
+[EM_tot, t1] = SGS(nx, ny, nCase, covar, neigh, parm, method);
+covar.c0 = 1e6; % variance
+[EF_tot, t2] = SGS(nx, ny, nCase, covar, neigh, parm, method);
 
 i_index = rem([1:nx*ny]'-1, nx) + 1;
 j_index = floor(([1:nx*ny]'-1)/nx)+1;
 x_centroid = Lx/nx*(i_index-1/2);
 y_centroid = Ly/ny*(j_index-1/2);
 perm_m_tot = exp(reshape(logPermM, nx*ny, nCase));
-perm_f_tot = 100*exp(reshape(logPermF, nx*ny, nCase));
-EM_tot = 1e9*exp(reshape(logEM, nx*ny, nCase));
-EF_tot = 1e7*exp(reshape(logEF, nx*ny, nCase));
+perm_f_tot = exp(reshape(logPermF, nx*ny, nCase));
+EM_tot = reshape(EM_tot, nx*ny, nCase) + 1e9; % mean: 1e9 var: 1e8 no log
+EF_tot = reshape(EF_tot, nx*ny, nCase) + 1e7;
 
 %%
 save('perm.mat', 'perm_m_tot', 'perm_f_tot', 'EM_tot', 'EF_tot', 'i_index', 'j_index', 'x_centroid', 'y_centroid', 'nCase');
