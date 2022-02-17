@@ -6,7 +6,7 @@ addpath('./SGS/')
 %% Input from simulation: please check if this dimension is consistent with the values in the simulation!
 Lx = 100; Ly = 100;
 nx = 100; ny = 100; % check 
-nCase = 2; % number of realization
+nCase = 10000; % number of realization
 
 %% SGS Setting
 covar.model = 'gaussian'; % type of covariance function, see functions/kriginginitiaite.m for option
@@ -43,15 +43,15 @@ EF_tot = reshape(EF_tot, nx*ny, nCase) + 1e7;
 
 %%
 save('perm.mat', 'perm_m_tot', 'perm_f_tot', 'EM_tot', 'EF_tot', 'i_index', 'j_index', 'x_centroid', 'y_centroid', 'nCase');
-
-figure
-perm1 = exp(logPermM(:,:,1));
-pcolor(logPermM(:,:,1))
-shading interp
-colorbar
-
-figure
-perm2 = 100*exp(logPermF(:,:,1));
-pcolor(logPermF(:,:,1))
-shading interp
-colorbar
+% 
+% figure
+% perm1 = exp(logPermM(:,:,1));
+% pcolor(logPermM(:,:,1))
+% shading interp
+% colorbar
+% 
+% figure
+% perm2 = 100*exp(logPermF(:,:,1));
+% pcolor(logPermF(:,:,1))
+% shading interp
+% colorbar

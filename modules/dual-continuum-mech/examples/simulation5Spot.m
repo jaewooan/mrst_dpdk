@@ -13,24 +13,25 @@ clc
 close all
 
 %% Load required modules
+addpath(genpath('../../../../mrst-2021b'));
 mrstModule add dual-continuum-mech ad-core ad-mechanics dual-porosity ad-props vemmech
 
 %% Basic Simulation input setting
-nx = 10; ny = 10; 
+nx = 100; ny = 100; 
 Lx = 100; Ly = 100; %m
 porom = 0.375; porof = 0.9;
 rho = 1000; %kg/m3
 cf = 4.4e-10; %fluid compressibility 1/pa
 pref = 0; %pa
 K_s = -999; % Solid stiffness, for biot = 1, Ks = infty = K / (1-biot_coeff)
-time = linspace(1, 100, 100)*day; % sec
+time = linspace(1, 10, 10)*day; % sec
 force = 5e7; % pa, boundary traction
 p_init = 1e7; % pa, initial pressure
 sat_init = 1;
 vol_f = 0.0001; % frac vol fraction
 PV = Lx*Ly *((1-vol_f)*porom + vol_f*porof);
 q_inj = 0.5*PV/time(end); % m/sec
-q_prod = q_inj; % m/sec
+q_prod = q_inj/4; % m/sec
 well_radius = 0.1; %m
 d1 = Lx/nx*0.9; % m, spacing of matrix in x
 d2 = d1; % m, spacing of matrix in y: bulk length - fracture spacing
@@ -45,19 +46,19 @@ E_f = 1e7*ones(nx*ny,1); % Young's modulus of fracture continuum
 mu = 1; % centipoise = 1e-3 pa
 
 % our target for uncertainty: perm
-km = 1; kf = 100; %md
-perm_matrix = km*milli*darcy*ones(nx,ny); 
-perm_fracture = kf*milli*darcy*ones(nx,ny); 
+%km = 1; kf = 100; %md
+%perm_matrix = km*milli*darcy*ones(nx,ny); 
+%perm_fracture = kf*milli*darcy*ones(nx,ny); 
 
 % Load SGS perm files
 load('perm.mat');
 results=zeros(0,0);
 for i=1:nCase % nCase = 10000, nx = 100, ny = 100
     %% Setup default options
-    E_m = reshape(EM_tot(:,i), nx*ny, 1);
-    E_f = reshape(EF_tot(:,i), nx*ny, 1);
-%     perm_matrix = reshape(perm_m_tot(:,i), nx, ny)*milli*darcy;
-%     perm_fracture = reshape(perm_f_tot(:,i), nx, ny)*milli*darcy;
+    %E_m = reshape(EM_tot(:,i), nx*ny, 1);
+    %E_f = reshape(EF_tot(:,i), nx*ny, 1);
+    perm_matrix = reshape(perm_m_tot(:,i), nx, ny)*milli*darcy;
+    perm_fracture = reshape(perm_f_tot(:,i), nx, ny)*milli*darcy;
     opt = struct('cartDims'            , [nx, ny], ...
                  'L'                  , [Lx, Ly], ...
                  'fluid_model'        , 'water', ...
@@ -222,124 +223,124 @@ name = sprintf('pm_pf_ux_uy_nt%d_ncase_%d.mat', length(time), nCase);
 save(name, 'results');
 
 %% Plot results
-figure
-semilogx(time, p_m(nx*ny, :), '-', 'linewidth', 1.5)
-hold on
-semilogx(time, p_f(nx*ny, :), '--', 'linewidth', 1.5, 'markersize', 6)
-hold on
-xlabel('time [s]')
-ylabel('average pressure [Pa]')
-legend('matrix', 'fracture')
-title('Results for the intrinsic fracture stiffness simulation')
-
-figure
-tplot = 50;
-for i=1:nx
-    X_(i, :) =  G.cells.centroids(nx*(i-1)+1:nx*i,1)';
-    Y_(i, :) =  G.cells.centroids(nx*(i-1)+1:nx*i,2)';
-    R_(i,:) = p_f(nx*(i-1)+1:nx*i,tplot);
-end
-pcolor(X_, Y_, R_);
-title('fracture pressure')
-shading interp
-set(gca,'YDir','normal') 
-colorbar
-
-figure
-for i=1:nx
-    X_(i, :) =  G.cells.centroids(nx*(i-1)+1:nx*i,1)';
-    Y_(i, :) =  G.cells.centroids(nx*(i-1)+1:nx*i,2)';
-    R_2(i,:) = p_m(nx*(i-1)+1:nx*i,tplot);
-end
-pcolor(X_, Y_, R_2);
-title('matrix pressure')
-shading interp
-set(gca,'YDir','normal') 
-colorbar
-
-figure
-pcolor(X_, Y_, R_ - R_2);
-title('Pf - Pm')
-shading interp
-set(gca,'YDir','normal') 
-colorbar
-
-
-figure
-for i=1:nx
-    X_(i, :) =  G.cells.centroids(nx*(i-1)+1:nx*i,1)';
-    Y_(i, :) =  G.cells.centroids(nx*(i-1)+1:nx*i,2)';
-    R_(i, :) = states{tplot}.stress(nx*(i-1)+1:nx*i,1);
-end
-pcolor(X_, Y_, R_);
-shading interp
-title('stress_x')
-set(gca,'YDir','normal') 
-colorbar
-
-figure
-for i=1:nx
-    X_(i, :) =  G.cells.centroids(nx*(i-1)+1:nx*i,1)';
-    Y_(i, :) =  G.cells.centroids(nx*(i-1)+1:nx*i,2)';
-    R_(i, :) = states{tplot}.stress(nx*(i-1)+1:nx*i, 2);
-end
-pcolor(X_, Y_, R_);
-shading interp
-title('stress_y')
-set(gca,'YDir','normal') 
-colorbar
-
-
-figure
-for i=1:nx+1
-    X__(i, :) =  G.nodes.coords((nx+1)*(i-1)+1:(nx+1)*i,1)';
-    Y__(i, :) =  G.nodes.coords((nx+1)*(i-1)+1:(nx+1)*i,2)';
-    R__(i,:) = u((nx+1)*2*(i-1)+1:2:(nx+1)*2*i,tplot);
-end
-pcolor(X__, Y__, R__);
-shading interp
-title('Ux')
-set(gca,'YDir','normal') 
-colorbar
-
-
-figure
-for i=1:nx+1
-    X__(i, :) =  G.nodes.coords((nx+1)*(i-1)+1:(nx+1)*i,1)';
-    Y__(i, :) =  G.nodes.coords((nx+1)*(i-1)+1:(nx+1)*i,2)';
-    R__(i, :) = u((nx+1)*2*(i-1)+2:2:(nx+1)*2*i+1,tplot);
-end
-pcolor(X__, Y__, R__);
-shading interp
-title('Uy')
-set(gca,'YDir','normal') 
-colorbar
-
-
-figure
-pcolor(log10(perm_matrix));
-title('log matrix perm')
-shading interp
-set(gca,'YDir','normal') 
-colorbar
-
-figure
-pcolor(log10(perm_fracture));
-title('log fracture perm')
-shading interp
-set(gca,'YDir','normal') 
-colorbar
-        
-figure
-pcolor(log10(reshape(E_f, nx,ny)));
-title('Ef')
-shading interp
-set(gca,'YDir','normal') 
-colorbar
-
-figure
-pcolor(log10(reshape(E_m,nx,ny)));
-title('Em')
-shading interp
-set(gca,'YDir','normal') 
-colorbar
+% figure
+% semilogx(time, p_m(nx*ny, :), '-', 'linewidth', 1.5)
+% hold on
+% semilogx(time, p_f(nx*ny, :), '--', 'linewidth', 1.5, 'markersize', 6)
+% hold on
+% xlabel('time [s]')
+% ylabel('average pressure [Pa]')
+% legend('matrix', 'fracture')
+% title('Results for the intrinsic fracture stiffness simulation')
+% 
+% figure
+% tplot = 50;
+% for i=1:nx
+%     X_(i, :) =  G.cells.centroids(nx*(i-1)+1:nx*i,1)';
+%     Y_(i, :) =  G.cells.centroids(nx*(i-1)+1:nx*i,2)';
+%     R_(i,:) = p_f(nx*(i-1)+1:nx*i,tplot);
+% end
+% pcolor(X_, Y_, R_);
+% title('fracture pressure')
+% shading interp
+% set(gca,'YDir','normal') 
+% colorbar
+% 
+% figure
+% for i=1:nx
+%     X_(i, :) =  G.cells.centroids(nx*(i-1)+1:nx*i,1)';
+%     Y_(i, :) =  G.cells.centroids(nx*(i-1)+1:nx*i,2)';
+%     R_2(i,:) = p_m(nx*(i-1)+1:nx*i,tplot);
+% end
+% pcolor(X_, Y_, R_2);
+% title('matrix pressure')
+% shading interp
+% set(gca,'YDir','normal') 
+% colorbar
+% 
+% figure
+% pcolor(X_, Y_, R_ - R_2);
+% title('Pf - Pm')
+% shading interp
+% set(gca,'YDir','normal') 
+% colorbar
+% 
+% 
+% figure
+% for i=1:nx
+%     X_(i, :) =  G.cells.centroids(nx*(i-1)+1:nx*i,1)';
+%     Y_(i, :) =  G.cells.centroids(nx*(i-1)+1:nx*i,2)';
+%     R_(i, :) = states{tplot}.stress(nx*(i-1)+1:nx*i,1);
+% end
+% pcolor(X_, Y_, R_);
+% shading interp
+% title('stress_x')
+% set(gca,'YDir','normal') 
+% colorbar
+% 
+% figure
+% for i=1:nx
+%     X_(i, :) =  G.cells.centroids(nx*(i-1)+1:nx*i,1)';
+%     Y_(i, :) =  G.cells.centroids(nx*(i-1)+1:nx*i,2)';
+%     R_(i, :) = states{tplot}.stress(nx*(i-1)+1:nx*i, 2);
+% end
+% pcolor(X_, Y_, R_);
+% shading interp
+% title('stress_y')
+% set(gca,'YDir','normal') 
+% colorbar
+% 
+% 
+% figure
+% for i=1:nx+1
+%     X__(i, :) =  G.nodes.coords((nx+1)*(i-1)+1:(nx+1)*i,1)';
+%     Y__(i, :) =  G.nodes.coords((nx+1)*(i-1)+1:(nx+1)*i,2)';
+%     R__(i,:) = u((nx+1)*2*(i-1)+1:2:(nx+1)*2*i,tplot);
+% end
+% pcolor(X__, Y__, R__);
+% shading interp
+% title('Ux')
+% set(gca,'YDir','normal') 
+% colorbar
+% 
+% 
+% figure
+% for i=1:nx+1
+%     X__(i, :) =  G.nodes.coords((nx+1)*(i-1)+1:(nx+1)*i,1)';
+%     Y__(i, :) =  G.nodes.coords((nx+1)*(i-1)+1:(nx+1)*i,2)';
+%     R__(i, :) = u((nx+1)*2*(i-1)+2:2:(nx+1)*2*i+1,tplot);
+% end
+% pcolor(X__, Y__, R__);
+% shading interp
+% title('Uy')
+% set(gca,'YDir','normal') 
+% colorbar
+% 
+% 
+% figure
+% pcolor(log10(perm_matrix));
+% title('log matrix perm')
+% shading interp
+% set(gca,'YDir','normal') 
+% colorbar
+% 
+% figure
+% pcolor(log10(perm_fracture));
+% title('log fracture perm')
+% shading interp
+% set(gca,'YDir','normal') 
+% colorbar
+%         
+% figure
+% pcolor(log10(reshape(E_f, nx,ny)));
+% title('Ef')
+% shading interp
+% set(gca,'YDir','normal') 
+% colorbar
+% 
+% figure
+% pcolor(log10(reshape(E_m,nx,ny)));
+% title('Em')
+% shading interp
+% set(gca,'YDir','normal') 
+% colorbar
