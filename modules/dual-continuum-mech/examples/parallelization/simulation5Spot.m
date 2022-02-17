@@ -8,7 +8,7 @@
 %
 % Within this example we demonstrate the following solvers:
 %   * 'fully coupled'          : fully coupled solver
-%function simulation5SPot(iParallel)    
+function simulation5SPot(iParallel)    
     %% Load required modules
     addpath(genpath('../../../../../mrst-2021b'));
     mrstModule add dual-continuum-mech ad-core ad-mechanics dual-porosity ad-props vemmech
@@ -48,7 +48,6 @@
     %perm_fracture = kf*milli*darcy*ones(nx,ny); 
     
     % Load SGS perm files
-    iParallel = 1;
     filename = ['perm_', num2str(iParallel), '.mat'];
     load(filename);
     results=zeros(0,0);
@@ -221,4 +220,4 @@
     name = sprintf('pm_pf_ux_uy_nt%d_ncase_%d.mat', length(time), nCase/nParallel);
     save(name, 'results');
 
-%end
+end
